@@ -1,6 +1,25 @@
 node_modules/
 dist/
-.env
-.env.local
+
+# Secrets and local environment. Commit .env.example only.
+.env*
+!.env.example
+runtime.json
+*.key
+*.pem
+*.p12
+*.pfx
+*.p8
+*.cer
+*.crt
+*.keystore
+*.secret
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+credentials.json
+secrets.json
+
 *.log
 .DS_Store
