@@ -156,12 +156,17 @@ export function parseTimecode(value) {
   const text = String(value ?? '').trim();
   if (!text) return null;
   if (/^\d+(\.\d+)?$/.test(text)) return roundTime(Number(text));
-  const parts = text.split(':');
+  const parts = text.split(':').map((part) => part.trim());
   if (parts.length < 2 || parts.length > 3) return null;
-  if (parts.some((part) => !/^\d+(\.\d+)?$/.test(part.trim()))) return null;
-  const numbers = parts.map((part) => Number(part));
-  if (numbers.some((n) => n < 0)) return null;
-  if (parts.length === 2) return roundTime(numbers[0] * 60 + numbers[1]);
+  const numbers = [];
+  for (let i = 0; i < parts.length; i += 1) {
+    const last = i === parts.length - 1;
+    if (!(last ? /^\d+(\.\d+)?$/ : /^\d+$/).test(parts[i])) return null;
+    const number = Number(parts[i]);
+    if (number < 0 || (i > 0 && number >= 60)) return null;
+    numbers.push(number);
+  }
+  if (numbers.length === 2) return roundTime(numbers[0] * 60 + numbers[1]);
   return roundTime(numbers[0] * 3600 + numbers[1] * 60 + numbers[2]);
 }
 
@@ -177,6 +182,16 @@ export function presetLabel(key, preset) {
   }
   if (PRESET_LABELS[key]) return PRESET_LABELS[key];
   return friendlyTitle(String(key || 'Format'));
+}
+
+/** Keep a valid choice, otherwise default to the YouTube short. */
+export function nextPresetSelection(prevKeys, availableKeys) {
+  const prev = new Set(prevKeys);
+  const kept = availableKeys.filter((key) => prev.has(key));
+  if (kept.length > 0 && kept.length === prev.size) return kept;
+  if (kept.length) return kept;
+  if (availableKeys.includes('youtube_short')) return ['youtube_short'];
+  return availableKeys.length ? [availableKeys[0]] : [];
 }
 
 export function presetShape(key, label) {

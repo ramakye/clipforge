@@ -13,6 +13,7 @@ import {
   jobStatus,
   loginCopy,
   modeLabel,
+  nextPresetSelection,
   parseTimecode,
   presetLabel,
   presetShape,
@@ -396,7 +397,7 @@ const UploadArea = forwardRef(function UploadArea({ onUploaded, onToast, upload,
     <>
       <p className="kicker">Upload</p>
       <p className="upload-name">Nothing uploading</p>
-      <p className="upload-note">Drop a video on the left, or choose a file. Keep this tab open until the upload finishes.</p>
+      <p className="upload-note">Choose a file or drop a video in the box. Keep this tab open until the upload finishes.</p>
     </>
   );
 
@@ -413,7 +414,9 @@ const UploadArea = forwardRef(function UploadArea({ onUploaded, onToast, upload,
     const eta = upload.phase === 'uploading' ? uploadEta(upload.loaded, upload.total, upload.startedAt, now) : '';
     const meta = upload.phase === 'finishing' || pct == null
       ? 'Finishing upload…'
-      : `${formatBytes(upload.loaded)} of ${formatBytes(upload.total)} · ${pct}%${eta ? ` · ${eta}` : ''}`;
+      : !upload.loaded
+        ? 'Starting upload…'
+        : `${formatBytes(upload.loaded)} of ${formatBytes(upload.total)} · ${pct}%${eta ? ` · ${eta}` : ''}`;
     card = (
       <>
         <p className="kicker">Uploading</p>
@@ -491,8 +494,10 @@ function ClipCard({ clip, index, jobId, presets, onRefresh, onToast }) {
   const [endText, setEndText] = useState(() => formatTimecode(Number(clip.end)));
   const [trimError, setTrimError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const startRef = useRef(null);
   const endRef = useRef(null);
+  const videoRef = useRef(null);
   const presetEntries = presets && typeof presets === 'object' && !Array.isArray(presets)
     ? Object.entries(presets)
     : [];
@@ -504,13 +509,10 @@ function ClipCard({ clip, index, jobId, presets, onRefresh, onToast }) {
 
   useEffect(() => {
     const keys = presetEntries.map(([key]) => key);
-    if (!keys.length) return;
     setSelected((prev) => {
-      const kept = [...prev].filter((key) => keys.includes(key));
-      if (kept.length === prev.size && kept.every((key) => prev.has(key))) return prev;
-      if (kept.length) return new Set(kept);
-      if (keys.includes('youtube_short')) return new Set(['youtube_short']);
-      return new Set([keys[0]]);
+      const next = nextPresetSelection([...prev], keys);
+      if (next.length === prev.size && next.every((key) => prev.has(key))) return prev;
+      return new Set(next);
     });
   }, [presets]);
 
@@ -606,7 +608,22 @@ function ClipCard({ clip, index, jobId, presets, onRefresh, onToast }) {
     <article className={`clip${exported ? ' exported' : ''}`} aria-labelledby={titleId}>
       <div className={`clip-preview tone-${index % 3}`}>
         {clip.previewUrl ? (
-          <video controls preload="metadata" src={api.previewUrl(jobId, clip.id)} aria-label={`${title} preview`} />
+          <>
+            <video
+              ref={videoRef}
+              controls={playing}
+              preload="metadata"
+              src={api.previewUrl(jobId, clip.id)}
+              aria-label={playing ? `${title} preview` : undefined}
+              aria-hidden={playing ? undefined : true}
+              onPlay={() => setPlaying(true)}
+            />
+            {!playing && (
+              <button type="button" className="play-glyph" aria-label={`Play preview of ${title}`} onClick={() => videoRef.current?.play()}>
+                <PlayIcon />
+              </button>
+            )}
+          </>
         ) : (
           <>
             <div className="play-glyph"><PlayIcon /></div>
@@ -918,7 +935,7 @@ export default function App() {
   const [user, setUser] = useState(() => (api.getToken() ? (api.getSessionName() || 'Signed in') : null));
   const hash = useHash();
   const view = viewFromHash(hash);
-  const { toasts, push, dismiss } = useToasts();
+  const { toasts, push, dismiss, clear } = useToasts();
   const uploadRef = useRef(null);
   const abortRef = useRef(null);
   const silentAbort = useRef(false);
@@ -941,6 +958,7 @@ export default function App() {
     api.setToken(null);
     setUser(null);
     setUpload(null);
+    clear();
     if (window.location.hash && window.location.hash !== '#/') {
       window.location.hash = '#/';
     }

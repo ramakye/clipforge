@@ -16,6 +16,7 @@ import {
   loginCopy,
   modeLabel,
   parseTimecode,
+  nextPresetSelection,
   presetLabel,
   presetShape,
   uploadEta,
@@ -113,6 +114,9 @@ describe('sizes, times, and timecodes', () => {
     assert.equal(parseTimecode('90'), 90);
     assert.equal(parseTimecode('nope'), null);
     assert.equal(parseTimecode('1:2:3:4'), null);
+    assert.equal(parseTimecode('14:44.014:50.0'), null);
+    assert.equal(parseTimecode('1:75:00'), null);
+    assert.equal(parseTimecode('14:60.0'), null);
     assert.equal(formatDuration(42), '0:42');
     assert.equal(formatDuration(842), '14:02');
   });
@@ -127,6 +131,10 @@ describe('presets and files', () => {
     assert.equal(presetShape('landscape', 'Landscape (16:9)'), 'landscape');
     assert.equal(presetShape('square', 'Square (1:1)'), 'square');
     assert.equal(presetShape('custom', 'Custom'), null);
+    assert.deepEqual(nextPresetSelection([], ['youtube_short', 'tiktok']), ['youtube_short']);
+    assert.deepEqual(nextPresetSelection(['tiktok'], ['youtube_short', 'tiktok']), ['tiktok']);
+    assert.deepEqual(nextPresetSelection(['youtube_short', 'missing'], ['youtube_short']), ['youtube_short']);
+    assert.deepEqual(nextPresetSelection([], []), []);
   });
 
   it('accepts the formats the picker advertises', () => {

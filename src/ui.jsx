@@ -105,7 +105,8 @@ export function useToasts() {
   const dismiss = useCallback((id) => {
     setToasts((list) => list.filter((toast) => toast.id !== id));
   }, []);
-  return { toasts, push, dismiss };
+  const clear = useCallback(() => setToasts([]), []);
+  return { toasts, push, dismiss, clear };
 }
 
 function ToastCard({ toast, onDismiss }) {
